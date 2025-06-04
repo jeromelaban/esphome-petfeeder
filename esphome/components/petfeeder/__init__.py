@@ -43,13 +43,13 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(uart.UART_DEVICE_SCHEMA)
 
 
-# Define the feeding schedule structure for API service
-def feeding_schedule_schema():
-    return cv.Schema({
-        cv.Required("hour"): cv.int_range(min=0, max=23),
-        cv.Required("minute"): cv.int_range(min=0, max=59),
-        cv.Required("portions"): cv.int_range(min=1, max=255),
-    })
+# This schema is used for validation in Home Assistant/YAML only
+# The actual struct is defined in C++ code
+FEEDING_SCHEDULE_SCHEMA = cv.Schema({
+    cv.Required("hour"): cv.int_range(min=0, max=23),
+    cv.Required("minute"): cv.int_range(min=0, max=59),
+    cv.Required("portions"): cv.int_range(min=1, max=255),
+})
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -63,20 +63,6 @@ async def to_code(config):
     if CONF_TIME_ID in config:
         time_ = await cg.get_variable(config[CONF_TIME_ID])
         cg.add(var.set_time(time_))
-    
-    # Register the services with validation
-    cg.add(
-        var.register_service(
-            "set_feeding_schedule",
-            [cv.Any("std::vector<FeedingSchedule>")],
-            "on_set_feeding_schedule"
-        )
-    )
-    
-    cg.add(
-        var.register_service(
-            "clear_feeding_schedules",
-            [],
-            "on_clear_feeding_schedules"
-        )
-    )
+      # Register the services directly in the setup method
+    # The component itself will register the services with proper parameter types
+    # This will be handled in the PetFeederComponent::setup() method

@@ -1,0 +1,12 @@
+{
+  "set_feeding_schedule": {
+    "schedules": [
+      {
+        "hour": "NUMBER",
+        "minute": "NUMBER",
+        "portions": "NUMBER"
+      }
+    ]
+  },
+  "clear_feeding_schedules": {}
+}

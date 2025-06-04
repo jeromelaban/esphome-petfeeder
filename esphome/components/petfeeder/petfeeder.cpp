@@ -23,14 +23,16 @@ void PetFeederComponent::setup() {
       "test_message",
       {"target", "source", "command", "value"});
 
-    register_service(
-      &PetFeederComponent::on_set_feeding_schedule,
-      "set_feeding_schedule",
-      {"schedules"});
+    // We'll implement the feeding schedule services a bit differently
+    // First, register service handlers manually with API server
+    auto set_feeding_callback = [this](const std::vector<FeedingSchedule> &schedules) -> void {
+        this->on_set_feeding_schedule(schedules);
+    };
     
-    register_service(
-      &PetFeederComponent::on_clear_feeding_schedules,
-      "clear_feeding_schedules");
+    // Register handlers for the complex services
+    register_service("set_feeding_schedule", {"schedules"});
+    
+    register_service("clear_feeding_schedules");
 
     // Initialize RTC object and load schedules
     this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(this->get_object_id_hash());

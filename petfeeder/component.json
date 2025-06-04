@@ -1,0 +1,5 @@
+{
+  "name": "petfeeder",
+  "version": "1.0",
+  "dependencies": ["uart", "sensor", "api"]
+}

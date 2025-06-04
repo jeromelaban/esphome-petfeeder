@@ -43,7 +43,7 @@ void PetFeederComponent::setup() {
     // Initialize RTC object and load schedules
     // We use a unique hash based on the component type and address for storage
     uint32_t hash = fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this));
-    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(hash);
+    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(hash, true);
     this->load_schedules_();
 }
 

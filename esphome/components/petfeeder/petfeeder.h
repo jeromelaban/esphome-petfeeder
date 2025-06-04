@@ -34,6 +34,11 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
   
+  // Generate a stable hash for preferences storage
+  uint32_t get_hash_base() const {
+    return 0x17dec01e; // "pet feeder" magic number
+  }
+  
   void set_counter_component(PetFeederPortionsCounterComponent *counter) { this->counter_component_ = counter; }
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
     void on_pet_feed(int portions);

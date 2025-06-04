@@ -27,14 +27,15 @@ void PetFeederComponent::setup() {
       &PetFeederComponent::on_add_feeding_schedule,
       "add_feeding_schedule",
       {"hour", "minute", "portions"});
-    
-    register_service(
+
+      register_service(
       &PetFeederComponent::on_clear_feeding_schedules,
       "clear_feeding_schedules"); 
 
     // Initialize RTC object
-    // We use a unique hash based on the component type and address for storage
-    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(this->get_object_id_hash(), true);
+    // We use a unique hash based on the component type for storage
+    uint32_t hash_base = this->get_hash_base();
+    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash_base, true);
     this->load_schedules_();
 }
 
@@ -110,9 +111,8 @@ void PetFeederComponent::save_schedules_() {
       (static_cast<uint32_t>(schedule.hour) << 16) | 
       (static_cast<uint32_t>(schedule.minute) << 8) | 
       static_cast<uint32_t>(schedule.portions);
-    
-    auto pref = global_preferences->make_preference<uint32_t>(
-      this->get_object_id_hash() + i + 1, true);
+      auto pref = global_preferences->make_preference<uint32_t>(
+      this->get_hash_base() + i + 1, true);
     pref.save(&schedule_data);
   }
   
@@ -137,8 +137,8 @@ void PetFeederComponent::load_schedules_() {
   
   // Then load each schedule
   for (size_t i = 0; i < count; i++) {
-    auto pref = global_preferences->make_preference<uint32_t>(
-      this->get_object_id_hash() + i + 1, true);
+      auto pref = global_preferences->make_preference<uint32_t>(
+      this->get_hash_base() + i + 1, true);
     uint32_t schedule_data = 0;
     
     if (pref.load(&schedule_data)) {

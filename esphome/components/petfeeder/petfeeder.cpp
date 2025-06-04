@@ -148,7 +148,7 @@ void PetFeederComponent::load_schedules_() {
       } else {
         ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
       }
-    }
+    }  
   }
   
   ESP_LOGD(TAG, "Loaded %d feeding schedules from flash", this->feeding_schedules_.size());
@@ -157,7 +157,6 @@ void PetFeederComponent::load_schedules_() {
              i, this->feeding_schedules_[i].hour, this->feeding_schedules_[i].minute, 
              this->feeding_schedules_[i].portions);
   }
-}
 }
 
 void PetFeederComponent::loop() {

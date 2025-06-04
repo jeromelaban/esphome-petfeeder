@@ -8,6 +8,8 @@
 #include "esphome/components/time/real_time_clock.h"
 #include <numeric>
 #include <vector>
+#include <map>
+#include <string>
 #include <time.h>
 #include "esphome/core/application.h"
 #include "esphome/components/api/custom_api_device.h"

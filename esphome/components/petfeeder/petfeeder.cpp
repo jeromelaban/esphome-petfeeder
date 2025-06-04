@@ -31,6 +31,7 @@ void PetFeederComponent::setup() {
       &PetFeederComponent::on_test_message,
       "test_message",
       {"target", "source", "command", "value"});    // Register services with proper method pointers
+
     register_service(
       &PetFeederComponent::on_add_feeding_schedule,
       "add_feeding_schedule",
@@ -38,7 +39,9 @@ void PetFeederComponent::setup() {
     
     register_service(
       &PetFeederComponent::on_clear_feeding_schedules,
-      "clear_feeding_schedules");    // Initialize RTC object
+      "clear_feeding_schedules"); 
+
+    // Initialize RTC object
     // We use a unique hash based on the component type and address for storage
     uint32_t hash = fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this));
     this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
@@ -211,13 +214,12 @@ void PetFeederComponent::check_feeding_schedules_() {
     if (current_time.hour == schedule.hour && current_time.minute == schedule.minute) {
             ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
                schedule.hour, schedule.minute, schedule.portions);
-      
-      // Fire an event to Home Assistant
-      fire_homeassistant_event("esphome.petfeeder_auto_feeding", {
-        {"hour", schedule.hour},
-        {"minute", schedule.minute},
-        {"portions", schedule.portions}
-      });
+        // Fire an event to Home Assistant
+      std::map<std::string, std::string> data;
+      data["hour"] = std::to_string(schedule.hour);
+      data["minute"] = std::to_string(schedule.minute);
+      data["portions"] = std::to_string(schedule.portions);
+      fire_homeassistant_event("esphome.petfeeder_auto_feeding", data);
       
       // Feed the pet
       this->on_pet_feed(schedule.portions);

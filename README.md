@@ -5,7 +5,7 @@ This is an ESPHome external component for controlling an ESP8266-based Wifi pet 
 > [!IMPORTANT]
 > Using this component does require physical modifications to your device that will void your warranty. Those modifications are not detailed in this repo.
 
-![image of the pet feeder](petfeeder/pet-feeder.png)
+![image of the pet feeder](esphome/components/petfeeder/pet-feeder.png)
 
 ## Features
 - Feed pet with specified portions

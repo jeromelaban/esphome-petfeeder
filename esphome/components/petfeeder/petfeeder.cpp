@@ -30,11 +30,10 @@ void PetFeederComponent::setup() {
     register_service(
       &PetFeederComponent::on_test_message,
       "test_message",
-      {"target", "source", "command", "value"});    // Register services with proper method pointers
-    register_service(
-      &PetFeederComponent::on_set_feeding_schedule,
-      "set_feeding_schedule",
-      {"schedules"});
+      {"target", "source", "command", "value"});    // Register services with proper method pointers    register_service(
+      &PetFeederComponent::on_add_feeding_schedule,
+      "add_feeding_schedule",
+      {"hour", "minute", "portions"});
     
     register_service(
       &PetFeederComponent::on_clear_feeding_schedules,
@@ -67,16 +66,28 @@ void PetFeederComponent::on_pet_feed(int portions) {
   send_message_(0x00, 0x06, 0x00, {0x65, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, (char)portions});
 }
 
-void PetFeederComponent::on_set_feeding_schedule(std::vector<FeedingSchedule> schedules) {
-  ESP_LOGD(TAG, "Setting %d feeding schedules", schedules.size());
-  this->feeding_schedules_ = schedules;
+void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int portions) {
+  ESP_LOGD(TAG, "Adding feeding schedule: %02d:%02d - %d portions", hour, minute, portions);
+  
+  // Validate input
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || portions <= 0 || portions > 100) {
+    ESP_LOGW(TAG, "Invalid schedule parameters: hour=%d, minute=%d, portions=%d", hour, minute, portions);
+    return;
+  }
+  
+  // Create a new schedule
+  FeedingSchedule schedule;
+  schedule.hour = hour;
+  schedule.minute = minute;
+  schedule.portions = portions;
+  
+  // Add to our schedules
+  this->feeding_schedules_.push_back(schedule);
+  
+  // Save to flash
   this->save_schedules_();
   
-  ESP_LOGD(TAG, "Feeding schedules set:");
-  for (size_t i = 0; i < schedules.size(); i++) {
-    ESP_LOGD(TAG, "  Schedule %d: %02d:%02d - %d portions", 
-             i, schedules[i].hour, schedules[i].minute, schedules[i].portions);
-  }
+  ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules", this->feeding_schedules_.size());
 }
 
 void PetFeederComponent::on_clear_feeding_schedules() {

@@ -99,27 +99,28 @@ Parameters:
 - `command`: Command value (integer)
 - `value`: Value to send (integer)
 
-### `petfeeder.set_feeding_schedule`
-Configure automatic feeding schedules. This allows you to set multiple feeding times throughout the day, each with their own portion amount. Schedules are saved in flash memory and will work even when the device is offline.
+### `petfeeder.add_feeding_schedule`
+Add an automatic feeding schedule. You can call this method multiple times to create multiple feeding times throughout the day. Schedules are saved in flash memory and will work even when the device is offline.
 
 Parameters:
-- `schedules`: A list of feeding schedules, each with:
-  - `hour`: Hour of the day (0-23)
-  - `minute`: Minute of the hour (0-59)
-  - `portions`: Number of portions to dispense (integer)
+- `hour`: Hour of the day (0-23)
+- `minute`: Minute of the hour (0-59)
+- `portions`: Number of portions to dispense (integer)
 
 Example service call:
 ```yaml
 service:
-  - service: petfeeder.set_feeding_schedule
+  - service: petfeeder.add_feeding_schedule
     data:
-      schedules:
-        - hour: 8
-          minute: 0
-          portions: 2
-        - hour: 18
-          minute: 30
-          portions: 2
+      hour: 8
+      minute: 0
+      portions: 2
+  
+  - service: petfeeder.add_feeding_schedule
+    data:
+      hour: 18
+      minute: 30
+      portions: 2
 ```
 
 ### `petfeeder.clear_feeding_schedules`

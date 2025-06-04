@@ -34,10 +34,9 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   
   void set_counter_component(PetFeederPortionsCounterComponent *counter) { this->counter_component_ = counter; }
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-  
-  void on_pet_feed(int portions);
+    void on_pet_feed(int portions);
   void on_test_message(int target, int source, int command, int value);
-  void on_set_feeding_schedule(std::vector<FeedingSchedule> schedules);
+  void on_add_feeding_schedule(int hour, int minute, int portions);
   void on_clear_feeding_schedules();
  protected:
   PetFeederPortionsCounterComponent *counter_component_{nullptr};

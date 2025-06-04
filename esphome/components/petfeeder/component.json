@@ -17,17 +17,12 @@
         "command": "int",
         "value": "int"
       }
-    },
-    {
-      "name": "set_feeding_schedule",
+    },    {
+      "name": "add_feeding_schedule",
       "params": {
-        "schedules": [
-          {
-            "hour": "int",
-            "minute": "int",
-            "portions": "int"
-          }
-        ]
+        "hour": "int",
+        "minute": "int",
+        "portions": "int"
       }
     },
     {

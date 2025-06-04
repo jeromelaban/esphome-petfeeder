@@ -8,9 +8,12 @@ This is an ESPHome external component for controlling an ESP8266-based Wifi pet 
 ![image of the pet feeder](petfeeder/pet-feeder.png)
 
 ## Features
+
 - Feed pet with specified portions
 - Track the total portions dispensed
 - Automatically indicate network state via device LED
+- Schedule automatic feedings at specific times of day (works even offline)
+- Stores feeding schedules in flash memory
 
 ## Installation
 
@@ -33,10 +36,43 @@ uart:
   tx_pin: GPIO17
   baud_rate: 9600
 
+# Time component is required for scheduled feedings
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
 petfeeder:
   portions_counter:
     name: "Pet Feeder Portions Counter"
+  time_id: homeassistant_time  # Optional: required only if using scheduled feedings
 ```
+
+### Offline Operation
+
+For offline operation, you may want to use a different time source such as NTP or a real-time clock (RTC) module:
+
+```yaml
+# Example configuration for offline operation with NTP time
+time:
+  - platform: sntp
+    id: ntp_time
+
+petfeeder:
+  portions_counter:
+    name: "Pet Feeder Portions Counter"
+  time_id: ntp_time
+```
+
+## How Offline Operation Works
+
+The pet feeder component has been enhanced to work reliably even without a network connection:
+
+1. **Persistent Storage**: All feeding schedules are stored in the ESP8266's flash memory using ESPHome's preferences system.
+2. **Time-Based Triggering**: The component checks the current time once per minute and triggers feedings if it matches any of the configured schedules.
+3. **Network Status Indication**: The device's LED indicates the network connection status automatically:
+   - Steady light: Connected to network
+   - Slow blinking: Offline but still operational
+4. **Automatic Recovery**: When the network connection is restored, the component will automatically reconnect and continue reporting to Home Assistant.
 
 ## Services
 
@@ -62,3 +98,35 @@ Parameters:
 - `source`: Source address (integer)
 - `command`: Command value (integer)
 - `value`: Value to send (integer)
+
+### `petfeeder.set_feeding_schedule`
+Configure automatic feeding schedules. This allows you to set multiple feeding times throughout the day, each with their own portion amount. Schedules are saved in flash memory and will work even when the device is offline.
+
+Parameters:
+- `schedules`: A list of feeding schedules, each with:
+  - `hour`: Hour of the day (0-23)
+  - `minute`: Minute of the hour (0-59)
+  - `portions`: Number of portions to dispense (integer)
+
+Example service call:
+```yaml
+service:
+  - service: petfeeder.set_feeding_schedule
+    data:
+      schedules:
+        - hour: 8
+          minute: 0
+          portions: 2
+        - hour: 18
+          minute: 30
+          portions: 2
+```
+
+### `petfeeder.clear_feeding_schedules`
+Remove all configured feeding schedules.
+
+Example service call:
+```yaml
+service:
+  - service: petfeeder.clear_feeding_schedules
+```

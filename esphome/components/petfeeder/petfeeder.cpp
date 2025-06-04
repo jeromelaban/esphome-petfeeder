@@ -22,11 +22,30 @@ void PetFeederComponent::setup() {
       &PetFeederComponent::on_test_message,
       "test_message",
       {"target", "source", "command", "value"});
+
+    register_service(
+      &PetFeederComponent::on_set_feeding_schedule,
+      "set_feeding_schedule",
+      {"schedules"});
+    
+    register_service(
+      &PetFeederComponent::on_clear_feeding_schedules,
+      "clear_feeding_schedules");
+
+    // Initialize RTC object and load schedules
+    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(this->get_object_id_hash());
+    this->load_schedules_();
 }
 
 void PetFeederComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Pet Feeder Component:");
   this->check_uart_settings(9600);
+  
+  ESP_LOGCONFIG(TAG, "  Feeding Schedules:");
+  for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
+    auto schedule = this->feeding_schedules_[i];
+    ESP_LOGCONFIG(TAG, "    Schedule %d: %02d:%02d - %d portions", i, schedule.hour, schedule.minute, schedule.portions);
+  }
 }
 
 void PetFeederComponent::on_test_message(int target, int source, int command, int value) {
@@ -40,9 +59,82 @@ void PetFeederComponent::on_pet_feed(int portions) {
   send_message_(0x00, 0x06, 0x00, {0x65, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, (char)portions});
 }
 
+void PetFeederComponent::on_set_feeding_schedule(std::vector<FeedingSchedule> schedules) {
+  ESP_LOGD(TAG, "Setting %d feeding schedules", schedules.size());
+  this->feeding_schedules_ = schedules;
+  this->save_schedules_();
+  
+  ESP_LOGD(TAG, "Feeding schedules set:");
+  for (size_t i = 0; i < schedules.size(); i++) {
+    ESP_LOGD(TAG, "  Schedule %d: %02d:%02d - %d portions", 
+             i, schedules[i].hour, schedules[i].minute, schedules[i].portions);
+  }
+}
+
+void PetFeederComponent::on_clear_feeding_schedules() {
+  ESP_LOGD(TAG, "Clearing all feeding schedules");
+  this->feeding_schedules_.clear();
+  this->save_schedules_();
+}
+
+void PetFeederComponent::save_schedules_() {
+  this->rtc_schedules_.save(&this->feeding_schedules_);
+  ESP_LOGD(TAG, "Saved %d feeding schedules to flash", this->feeding_schedules_.size());
+}
+
+void PetFeederComponent::load_schedules_() {
+  if (!this->rtc_schedules_.load(&this->feeding_schedules_)) {
+    ESP_LOGD(TAG, "No feeding schedules found in flash");
+    this->feeding_schedules_.clear();
+  } else {
+    ESP_LOGD(TAG, "Loaded %d feeding schedules from flash", this->feeding_schedules_.size());
+    for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
+      ESP_LOGD(TAG, "  Schedule %d: %02d:%02d - %d portions", 
+               i, this->feeding_schedules_[i].hour, this->feeding_schedules_[i].minute, 
+               this->feeding_schedules_[i].portions);
+    }
+  }
+}
+
 void PetFeederComponent::loop() {
   check_network_();
+  check_feeding_schedules_();
   process_serial_();
+}
+
+void PetFeederComponent::check_feeding_schedules_() {
+  // Check schedules every minute
+  auto now = millis();
+  if (now - this->last_schedule_check_ < 60000) {
+    return;
+  }
+  
+  this->last_schedule_check_ = now;
+  
+  if (this->feeding_schedules_.empty()) {
+    return;
+  }
+  
+  // Get the current time
+  auto time = ESPTime::from_epoch_local(::time(nullptr));
+  
+  // If we don't have a valid time, we can't check schedules
+  if (!time.is_valid()) {
+    ESP_LOGD(TAG, "No valid time available, can't check feeding schedules");
+    return;
+  }
+  
+  // For each schedule, check if it's time to feed
+  for (auto &schedule : this->feeding_schedules_) {
+    // Check if the current time matches a schedule
+    if (time.hour == schedule.hour && time.minute == schedule.minute) {
+      ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
+               schedule.hour, schedule.minute, schedule.portions);
+      
+      // Feed the pet
+      this->on_pet_feed(schedule.portions);
+    }
+  }
 }
 
 void PetFeederComponent::process_serial_() {

@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import api, sensor, uart
+from esphome.components import api, sensor, uart, time
 from esphome.const import (
     CONF_ID,
     DEVICE_CLASS_EMPTY,
@@ -10,8 +10,10 @@ from esphome.const import (
 )
 
 CONF_PORTIONS_COUNTER = "portions_counter"
+CONF_TIME_ID = "time_id"
 
 DEPENDENCIES = ["uart", "api"]
+AUTO_LOAD = ["time"]
 CODEOWNERS = ["jeromelaban"]
 MULTI_CONF = True
 
@@ -23,6 +25,7 @@ PetFeederComponent = petfeeder_ns.class_(
 PetFeederPortionsCounterComponent = petfeeder_ns.class_(
     "PetFeederPortionsCounterComponent", cg.Component, sensor.Sensor
 )
+FeedingSchedule = petfeeder_ns.struct("FeedingSchedule")
 
 # Configuration schema
 CONFIG_SCHEMA = cv.Schema(
@@ -36,9 +39,18 @@ CONFIG_SCHEMA = cv.Schema(
             state_class=STATE_CLASS_MEASUREMENT,
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
+        cv.Optional(CONF_TIME_ID): cv.use_id(time.RealTimeClock),
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
+
+# Define the feeding schedule structure for API service
+def feeding_schedule_schema():
+    return cv.Schema({
+        cv.Required("hour"): cv.int_range(min=0, max=23),
+        cv.Required("minute"): cv.int_range(min=0, max=59),
+        cv.Required("portions"): cv.int_range(min=1, max=255),
+    })
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -48,3 +60,28 @@ async def to_code(config):
     if CONF_PORTIONS_COUNTER in config:
         sens = await sensor.new_sensor(config[CONF_PORTIONS_COUNTER])
         cg.add(var.set_counter_component(sens))
+    
+    # Register the feeding_schedule struct
+    cg.add_struct_type(
+        FeedingSchedule,
+        [
+            ("hour", "uint8_t"),
+            ("minute", "uint8_t"),
+            ("portions", "uint8_t"),
+        ],
+    )
+    
+    # Add validation for the set_feeding_schedule service
+    cg.add_on_setup_trigger(var, 
+        api.register_service_trigger(
+            var, "set_feeding_schedule", 
+            {"schedules": cv.Schema([feeding_schedule_schema()])}
+        )
+    )
+    
+    # Add validation for the clear_feeding_schedules service
+    cg.add_on_setup_trigger(var, 
+        api.register_service_trigger(
+            var, "clear_feeding_schedules", {}
+        )
+    )

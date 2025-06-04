@@ -101,6 +101,7 @@ Parameters:
 - `value`: Value to send (integer)
 
 ### `petfeeder.add_feeding_schedule`
+
 Add an automatic feeding schedule. You can call this method multiple times to create multiple feeding times throughout the day. Schedules are saved in flash memory and will work even when the device is offline.
 
 Parameters:
@@ -109,6 +110,7 @@ Parameters:
 - `portions`: Number of portions to dispense (integer)
 
 Example service call:
+
 ```yaml
 service:
   - service: petfeeder.add_feeding_schedule

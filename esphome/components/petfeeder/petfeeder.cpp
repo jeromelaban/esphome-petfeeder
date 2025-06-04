@@ -10,15 +10,6 @@
 namespace esphome {
 namespace petfeeder {
 
-// FNV1 hash implementation for object ID
-static uint32_t fnv1_hash(const uint8_t *data, size_t length) {
-  uint32_t hash = 2166136261UL;
-  for (size_t i = 0; i < length; i++) {
-    hash = (hash * 16777619UL) ^ data[i];
-  }
-  return hash;
-}
-
 static const char *const TAG = "petfeeder";
 
 void PetFeederComponent::setup() {
@@ -43,8 +34,7 @@ void PetFeederComponent::setup() {
 
     // Initialize RTC object
     // We use a unique hash based on the component type and address for storage
-    uint32_t hash = fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this));
-    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
+    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(this->get_object_id_hash(), true);
     this->load_schedules_();
 }
 
@@ -122,7 +112,7 @@ void PetFeederComponent::save_schedules_() {
       static_cast<uint32_t>(schedule.portions);
     
     auto pref = global_preferences->make_preference<uint32_t>(
-      fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this)) + i + 1, true);
+      this->get_object_id_hash() + i + 1, true);
     pref.save(&schedule_data);
   }
   
@@ -148,7 +138,7 @@ void PetFeederComponent::load_schedules_() {
   // Then load each schedule
   for (size_t i = 0; i < count; i++) {
     auto pref = global_preferences->make_preference<uint32_t>(
-      fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this)) + i + 1, true);
+      this->get_object_id_hash() + i + 1, true);
     uint32_t schedule_data = 0;
     
     if (pref.load(&schedule_data)) {

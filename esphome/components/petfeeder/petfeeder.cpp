@@ -10,6 +10,15 @@
 namespace esphome {
 namespace petfeeder {
 
+// FNV1 hash implementation for object ID
+static uint32_t fnv1_hash(const uint8_t *data, size_t length) {
+  uint32_t hash = 2166136261UL;
+  for (size_t i = 0; i < length; i++) {
+    hash = (hash * 16777619UL) ^ data[i];
+  }
+  return hash;
+}
+
 static const char *const TAG = "petfeeder";
 
 void PetFeederComponent::setup() {
@@ -21,21 +30,20 @@ void PetFeederComponent::setup() {
     register_service(
       &PetFeederComponent::on_test_message,
       "test_message",
-      {"target", "source", "command", "value"});
-
-    // We'll implement the feeding schedule services a bit differently
-    // First, register service handlers manually with API server
-    auto set_feeding_callback = [this](const std::vector<FeedingSchedule> &schedules) -> void {
-        this->on_set_feeding_schedule(schedules);
-    };
+      {"target", "source", "command", "value"});    // Register services with proper method pointers
+    register_service(
+      &PetFeederComponent::on_set_feeding_schedule,
+      "set_feeding_schedule",
+      {"schedules"});
     
-    // Register handlers for the complex services
-    register_service("set_feeding_schedule", {"schedules"});
-    
-    register_service("clear_feeding_schedules");
+    register_service(
+      &PetFeederComponent::on_clear_feeding_schedules,
+      "clear_feeding_schedules");
 
     // Initialize RTC object and load schedules
-    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(this->get_object_id_hash());
+    // We use a unique hash based on the component type and address for storage
+    uint32_t hash = fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this));
+    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(hash);
     this->load_schedules_();
 }
 

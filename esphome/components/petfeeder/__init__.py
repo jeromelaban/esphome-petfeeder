@@ -59,10 +59,11 @@ async def to_code(config):
     if CONF_PORTIONS_COUNTER in config:
         sens = await sensor.new_sensor(config[CONF_PORTIONS_COUNTER])
         cg.add(var.set_counter_component(sens))
-      # Handle time component if specified
+
+    # Handle time component if specified
     if CONF_TIME_ID in config:
         time_ = await cg.get_variable(config[CONF_TIME_ID])
         cg.add(var.set_time(time_))
-      # Register the services directly in the setup method
-    # The component itself will register the services with proper parameter types
-    # This will be handled in the PetFeederComponent::setup() method
+    
+    # The service registration is handled in the C++ code
+    # Services are registered in the setup() method of PetFeederComponent

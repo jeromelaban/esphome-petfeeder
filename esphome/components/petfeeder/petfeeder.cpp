@@ -74,7 +74,7 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
   ESP_LOGD(TAG, "Adding feeding schedule: %02d:%02d - %d portions", hour, minute, portions);
   
   // Validate input
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || portions <= 0 || portions > 100) {
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || portions <= 0 || portions > 10) {
     ESP_LOGW(TAG, "Invalid schedule parameters: hour=%d, minute=%d, portions=%d", hour, minute, portions);
     return;
   }
@@ -140,7 +140,7 @@ void PetFeederComponent::load_schedules_() {
   }
   
   // Sanity check - don't load more than a reasonable number of schedules
-  if (count > 20) {
+  if (count > 10) {
     ESP_LOGW(TAG, "Invalid schedule count in flash: %u", count);
     return;
   }

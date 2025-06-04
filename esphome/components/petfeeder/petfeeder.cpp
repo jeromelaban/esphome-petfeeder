@@ -30,7 +30,8 @@ void PetFeederComponent::setup() {
     register_service(
       &PetFeederComponent::on_test_message,
       "test_message",
-      {"target", "source", "command", "value"});    // Register services with proper method pointers    register_service(
+      {"target", "source", "command", "value"});    // Register services with proper method pointers
+    register_service(
       &PetFeederComponent::on_add_feeding_schedule,
       "add_feeding_schedule",
       {"hour", "minute", "portions"});

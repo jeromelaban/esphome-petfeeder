@@ -25,7 +25,6 @@ PetFeederComponent = petfeeder_ns.class_(
 PetFeederPortionsCounterComponent = petfeeder_ns.class_(
     "PetFeederPortionsCounterComponent", cg.Component, sensor.Sensor
 )
-FeedingSchedule = petfeeder_ns.struct("FeedingSchedule")
 
 # Configuration schema
 CONFIG_SCHEMA = cv.Schema(
@@ -60,28 +59,24 @@ async def to_code(config):
     if CONF_PORTIONS_COUNTER in config:
         sens = await sensor.new_sensor(config[CONF_PORTIONS_COUNTER])
         cg.add(var.set_counter_component(sens))
+      # Handle time component if specified
+    if CONF_TIME_ID in config:
+        time_ = await cg.get_variable(config[CONF_TIME_ID])
+        cg.add(var.set_time(time_))
     
-    # Register the feeding_schedule struct
-    cg.add_struct_type(
-        FeedingSchedule,
-        [
-            ("hour", "uint8_t"),
-            ("minute", "uint8_t"),
-            ("portions", "uint8_t"),
-        ],
-    )
-    
-    # Add validation for the set_feeding_schedule service
-    cg.add_on_setup_trigger(var, 
-        api.register_service_trigger(
-            var, "set_feeding_schedule", 
-            {"schedules": cv.Schema([feeding_schedule_schema()])}
+    # Register the services with validation
+    cg.add(
+        var.register_service(
+            "set_feeding_schedule",
+            [cv.Any("std::vector<FeedingSchedule>")],
+            "on_set_feeding_schedule"
         )
     )
     
-    # Add validation for the clear_feeding_schedules service
-    cg.add_on_setup_trigger(var, 
-        api.register_service_trigger(
-            var, "clear_feeding_schedules", {}
+    cg.add(
+        var.register_service(
+            "clear_feeding_schedules",
+            [],
+            "on_clear_feeding_schedules"
         )
     )

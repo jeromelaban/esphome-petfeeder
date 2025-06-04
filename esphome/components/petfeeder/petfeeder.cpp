@@ -115,11 +115,17 @@ void PetFeederComponent::check_feeding_schedules_() {
     return;
   }
   
-  // Get the current time
-  auto time = ESPTime::from_epoch_local(::time(nullptr));
+  ESPTime current_time;
+  
+  // Use the time component if available, otherwise use system time
+  if (this->time_ != nullptr) {
+    current_time = this->time_->now();
+  } else {
+    current_time = ESPTime::from_epoch_local(::time(nullptr));
+  }
   
   // If we don't have a valid time, we can't check schedules
-  if (!time.is_valid()) {
+  if (!current_time.is_valid()) {
     ESP_LOGD(TAG, "No valid time available, can't check feeding schedules");
     return;
   }
@@ -127,7 +133,7 @@ void PetFeederComponent::check_feeding_schedules_() {
   // For each schedule, check if it's time to feed
   for (auto &schedule : this->feeding_schedules_) {
     // Check if the current time matches a schedule
-    if (time.hour == schedule.hour && time.minute == schedule.minute) {
+    if (current_time.hour == schedule.hour && current_time.minute == schedule.minute) {
       ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
                schedule.hour, schedule.minute, schedule.portions);
       

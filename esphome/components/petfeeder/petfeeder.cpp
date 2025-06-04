@@ -83,6 +83,8 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
   this->save_schedules_();
   
   ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules", this->feeding_schedules_.size());
+
+  this->load_schedules_();
 }
 
 void PetFeederComponent::on_clear_feeding_schedules() {
@@ -112,7 +114,7 @@ void PetFeederComponent::save_schedules_() {
       (static_cast<uint32_t>(schedule.minute) << 8) | 
       static_cast<uint32_t>(schedule.portions);
       auto pref = global_preferences->make_preference<uint32_t>(
-      this->get_hash_base() + i + 1, true);
+        this->get_hash_base() + i + 1, true);
     pref.save(&schedule_data);
   }
   
@@ -138,7 +140,7 @@ void PetFeederComponent::load_schedules_() {
   // Then load each schedule
   for (size_t i = 0; i < count; i++) {
       auto pref = global_preferences->make_preference<uint32_t>(
-      this->get_hash_base() + i + 1, true);
+        this->get_hash_base() + i + 1, true);
     uint32_t schedule_data = 0;
     
     if (pref.load(&schedule_data)) {
@@ -371,7 +373,7 @@ void PetFeederPortionsCounterComponent::increment(int count) {
 }
 
 optional<int> PetFeederPortionsCounterComponent::get_initial_state_() {
-  this->rtc_ = global_preferences->make_preference<int>(this->get_object_id_hash());
+  this->rtc_ = global_preferences->make_preference<int>(this->get_object_id_hash(), true);
   int saved_portion_count;
   if (!this->rtc_.load(&saved_portion_count))
     return {};

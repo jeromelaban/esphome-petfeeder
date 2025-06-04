@@ -43,11 +43,10 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   PetFeederPortionsCounterComponent *counter_component_{nullptr};
   time::RealTimeClock *time_{nullptr};
   bool last_connected_{false};
-  uint32_t last_update_{0};
-  uint32_t last_schedule_check_{0};
+  uint32_t last_update_{0};  uint32_t last_schedule_check_{0};
   std::vector<char> incoming_message_{};
   std::vector<FeedingSchedule> feeding_schedules_{};
-  ESPPreferenceObject rtc_schedules_;
+  ESPPreferenceObject rtc_schedules_; // Stores count of schedules
   void process_serial_();
   void process_frame_(char targetAddress, char sourceAddress, char command, std::vector<char> data);
   void check_network_();

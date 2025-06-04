@@ -38,12 +38,10 @@ void PetFeederComponent::setup() {
     
     register_service(
       &PetFeederComponent::on_clear_feeding_schedules,
-      "clear_feeding_schedules");
-
-    // Initialize RTC object and load schedules
+      "clear_feeding_schedules");    // Initialize RTC object
     // We use a unique hash based on the component type and address for storage
     uint32_t hash = fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this));
-    this->rtc_schedules_ = global_preferences->make_preference<std::vector<FeedingSchedule>>(hash, true);
+    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
     this->load_schedules_();
 }
 
@@ -88,22 +86,78 @@ void PetFeederComponent::on_clear_feeding_schedules() {
 }
 
 void PetFeederComponent::save_schedules_() {
-  this->rtc_schedules_.save(&this->feeding_schedules_);
+  if (this->feeding_schedules_.empty()) {
+    // If no schedules, just save a 0
+    uint32_t count = 0;
+    this->rtc_schedules_.save(&count);
+    ESP_LOGD(TAG, "Saved 0 feeding schedules to flash");
+    return;
+  }
+  
+  // Save the count of schedules first
+  uint32_t count = this->feeding_schedules_.size();
+  this->rtc_schedules_.save(&count);
+  
+  // Then save each schedule individually
+  for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
+    auto& schedule = this->feeding_schedules_[i];
+    uint32_t schedule_data = 
+      (static_cast<uint32_t>(schedule.hour) << 16) | 
+      (static_cast<uint32_t>(schedule.minute) << 8) | 
+      static_cast<uint32_t>(schedule.portions);
+    
+    auto pref = global_preferences->make_preference<uint32_t>(
+      fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this)) + i + 1, true);
+    pref.save(&schedule_data);
+  }
+  
   ESP_LOGD(TAG, "Saved %d feeding schedules to flash", this->feeding_schedules_.size());
 }
 
 void PetFeederComponent::load_schedules_() {
-  if (!this->rtc_schedules_.load(&this->feeding_schedules_)) {
+  this->feeding_schedules_.clear();
+  
+  // First load the count
+  uint32_t count = 0;
+  if (!this->rtc_schedules_.load(&count) || count == 0) {
     ESP_LOGD(TAG, "No feeding schedules found in flash");
-    this->feeding_schedules_.clear();
-  } else {
-    ESP_LOGD(TAG, "Loaded %d feeding schedules from flash", this->feeding_schedules_.size());
-    for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
-      ESP_LOGD(TAG, "  Schedule %d: %02d:%02d - %d portions", 
-               i, this->feeding_schedules_[i].hour, this->feeding_schedules_[i].minute, 
-               this->feeding_schedules_[i].portions);
+    return;
+  }
+  
+  // Sanity check - don't load more than a reasonable number of schedules
+  if (count > 20) {
+    ESP_LOGW(TAG, "Invalid schedule count in flash: %u", count);
+    return;
+  }
+  
+  // Then load each schedule
+  for (size_t i = 0; i < count; i++) {
+    auto pref = global_preferences->make_preference<uint32_t>(
+      fnv1_hash(reinterpret_cast<uint8_t *>(this), sizeof(*this)) + i + 1, true);
+    uint32_t schedule_data = 0;
+    
+    if (pref.load(&schedule_data)) {
+      FeedingSchedule schedule;
+      schedule.hour = (schedule_data >> 16) & 0xFF;
+      schedule.minute = (schedule_data >> 8) & 0xFF;
+      schedule.portions = schedule_data & 0xFF;
+      
+      // Validate data
+      if (schedule.hour < 24 && schedule.minute < 60 && schedule.portions > 0 && schedule.portions < 100) {
+        this->feeding_schedules_.push_back(schedule);
+      } else {
+        ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
+      }
     }
   }
+  
+  ESP_LOGD(TAG, "Loaded %d feeding schedules from flash", this->feeding_schedules_.size());
+  for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
+    ESP_LOGD(TAG, "  Schedule %d: %02d:%02d - %d portions", 
+             i, this->feeding_schedules_[i].hour, this->feeding_schedules_[i].minute, 
+             this->feeding_schedules_[i].portions);
+  }
+}
 }
 
 void PetFeederComponent::loop() {

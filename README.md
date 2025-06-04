@@ -14,6 +14,7 @@ This is an ESPHome external component for controlling an ESP8266-based Wifi pet 
 - Automatically indicate network state via device LED
 - Schedule automatic feedings at specific times of day (works even offline)
 - Stores feeding schedules in flash memory
+- Triggers Home Assistant events when an automated feeding occurs
 
 ## Installation
 
@@ -130,4 +131,33 @@ Example service call:
 ```yaml
 service:
   - service: petfeeder.clear_feeding_schedules
+```
+
+## Home Assistant Events
+
+The pet feeder component triggers events in Home Assistant that you can use for automations:
+
+### `esphome.petfeeder_auto_feeding`
+
+Triggered when an automatic feeding occurs based on a schedule.
+
+Event data:
+
+- `hour`: Hour when the feeding occurred (0-23)
+- `minute`: Minute when the feeding occurred (0-59)
+- `portions`: Number of portions dispensed
+
+### Example Automation
+
+```yaml
+automation:
+  - alias: "Pet Feeder Notification"
+    trigger:
+      platform: event
+      event_type: esphome.petfeeder_auto_feeding
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Pet Feeder Activated"
+          message: "Pet was automatically fed {{ trigger.event.data.portions }} portions at {{ trigger.event.data.hour }}:{{ trigger.event.data.minute }}"
 ```

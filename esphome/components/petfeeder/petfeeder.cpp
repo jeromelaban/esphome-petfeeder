@@ -209,8 +209,15 @@ void PetFeederComponent::check_feeding_schedules_() {
   for (auto &schedule : this->feeding_schedules_) {
     // Check if the current time matches a schedule
     if (current_time.hour == schedule.hour && current_time.minute == schedule.minute) {
-      ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
+            ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
                schedule.hour, schedule.minute, schedule.portions);
+      
+      // Fire an event to Home Assistant
+      fire_homeassistant_event("esphome.petfeeder_auto_feeding", {
+        {"hour", schedule.hour},
+        {"minute", schedule.minute},
+        {"portions", schedule.portions}
+      });
       
       // Feed the pet
       this->on_pet_feed(schedule.portions);

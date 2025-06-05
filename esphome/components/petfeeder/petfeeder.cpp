@@ -338,17 +338,7 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             this->last_counter_update_ = now;
             this->counter_component_->increment(portions);
           } else {
-            ESP_LOGD(TAG, "Ask stop retry");
-
-            send_message_(            // 55 AA will be added inside send_message_
-                0x00,                 // target  = main MCU
-                0x06,                 // source  = ESP / Wi‑Fi board
-                0x00,                 // command = execute / generic
-                { 0x67, 0x05, 0x00, 0x00, 0x00 }
-                //            ▲      ▲    ▲    ▲
-                //            │      └───────── zeros (padding)
-                //            └─ echo of status 0x05 (optional but safer)
-            );                        // send_message_ appends checksum + 0x7E
+            ESP_LOGD(TAG, "Skipping counter increment");
           }
         }
       }

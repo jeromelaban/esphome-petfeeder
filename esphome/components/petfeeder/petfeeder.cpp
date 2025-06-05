@@ -49,7 +49,7 @@ void PetFeederComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "    Schedule %d: %02d:%02d - %d portions", i, schedule.hour, schedule.minute, schedule.portions);
   }
 
-  this.load_schedules_();  // Load schedules to ensure they are up-to-date in the log
+  this->load_schedules_();  // Load schedules to ensure they are up-to-date in the log
 }
 
 void PetFeederComponent::on_test_message(int target, int source, int command, int value) {

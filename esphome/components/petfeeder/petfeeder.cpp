@@ -32,12 +32,11 @@ void PetFeederComponent::setup() {
       &PetFeederComponent::on_clear_feeding_schedules,
       "clear_feeding_schedules"); 
 
-    // Initialize RTC object
-    // We use a unique hash based on the component type for storage
     uint32_t hash = fnv1_hash("petfeeder_schedule_count");
-    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
+    this->flash_schedules_count_ = global_preferences->make_preference<uint32_t>(hash, true);
     
     // Initialize fixed preference slots - do this during setup to ensure consistent order
+    // ESP8266 does not support dynamic preference re-creation, and the order of creation matters
     for (size_t i = 0; i < MAX_FEEDING_SCHEDULES; i++) {
         uint32_t slot_hash = fnv1_hash("petfeeder_schedule_slot_" + std::to_string(i));
         this->rtc_schedule_slots_[i] = global_preferences->make_preference<uint32_t>(slot_hash, true);
@@ -86,10 +85,10 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
     ESP_LOGW(TAG, "Invalid schedule parameters: hour=%d, minute=%d, portions=%d", hour, minute, portions);
     return;
   }
-  
+
   // Check if we've reached the maximum number of schedules
   if (this->feeding_schedules_.size() >= MAX_FEEDING_SCHEDULES) {
-    ESP_LOGW(TAG, "Cannot add schedule: maximum number of schedules (%d) reached", MAX_FEEDING_SCHEDULES);
+    ESP_LOGW(TAG, "Cannot add schedule: maximum number of schedules (%d) reached, invoke clear first", MAX_FEEDING_SCHEDULES);
     return;
   }
   
@@ -118,7 +117,8 @@ void PetFeederComponent::on_clear_feeding_schedules() {
 void PetFeederComponent::save_schedules_() {
   // Save the count of schedules (up to MAX_FEEDING_SCHEDULES)
   uint32_t count = std::min(this->feeding_schedules_.size(), MAX_FEEDING_SCHEDULES);
-  if (!this->rtc_schedules_.save(&count)) {
+
+  if (!this->flash_schedules_count_.save(&count)) {
     ESP_LOGW(TAG, "Failed to save schedule count to flash");
     return;
   }
@@ -161,7 +161,7 @@ void PetFeederComponent::load_schedules_() {
   
   // First load the count
   uint32_t count = 0;
-  if (!this->rtc_schedules_.load(&count)) {
+  if (!this->flash_schedules_count_.load(&count)) {
     ESP_LOGD(TAG, "Failed to load schedule count from flash");
     return;
   }

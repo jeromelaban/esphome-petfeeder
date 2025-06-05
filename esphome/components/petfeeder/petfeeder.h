@@ -54,7 +54,7 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   bool last_connected_{false};
   uint32_t last_update_{0};  uint32_t last_schedule_check_{0};
   std::vector<char> incoming_message_{};  std::vector<FeedingSchedule> feeding_schedules_{};
-  ESPPreferenceObject rtc_schedules_; // Stores count of schedules
+  ESPPreferenceObject flash_schedules_count_; // Stores count of schedules
   ESPPreferenceObject rtc_schedule_slots_[MAX_FEEDING_SCHEDULES]; // Fixed slots for schedules
   void process_serial_();
   void process_frame_(char targetAddress, char sourceAddress, char command, std::vector<char> data);

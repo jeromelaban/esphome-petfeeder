@@ -340,7 +340,7 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
           } else {
             ESP_LOGD(TAG, "Ask stop retry");
 
-            send_message_(0x07, 0x03, 0x01, { 0x66 });	
+            send_message_(0x07,0x03,0x10,{});
           }
         }
       }

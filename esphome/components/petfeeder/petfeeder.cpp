@@ -90,6 +90,8 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
   this->save_schedules_();
   
   ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules", this->feeding_schedules_.size());
+
+  this->load_schedules_();  // Reload to ensure we have the latest data
 }
 
 void PetFeederComponent::on_clear_feeding_schedules() {

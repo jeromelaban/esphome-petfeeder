@@ -341,8 +341,8 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             ESP_LOGD(TAG, "Ask stop retry");
 
             send_message_(            // 55 AA will be added inside send_message_
-                0x07,                 // target  = main MCU
-                0x03,                 // source  = ESP / Wi‑Fi board
+                0x00,                 // target  = main MCU
+                0x06,                 // source  = ESP / Wi‑Fi board
                 0x00,                 // command = execute / generic
                 { 0x67, 0x05, 0x00, 0x00, 0x00 }
                 //            ▲      ▲    ▲    ▲

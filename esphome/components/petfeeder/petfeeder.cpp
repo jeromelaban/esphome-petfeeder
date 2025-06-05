@@ -143,7 +143,7 @@ void PetFeederComponent::save_schedules_() {
     }
     
     ESP_LOGD(TAG, "Saved schedule %d with key %u: %02d:%02d - %d portions", 
-             i, pref_key, schedule.hour, schedule.minute, schedule.portions);
+             i, hash, schedule.hour, schedule.minute, schedule.portions);
     
     // Small delay between writes to ensure flash has time to settle
     delay(10);
@@ -207,7 +207,7 @@ void PetFeederComponent::load_schedules_() {
         ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
       }
     } else {
-      ESP_LOGW(TAG, "Failed to load schedule %d with key %u", i, pref_key);
+      ESP_LOGW(TAG, "Failed to load schedule %d with key %u", i, hash);
     }
   }
   

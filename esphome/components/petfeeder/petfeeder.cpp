@@ -51,6 +51,19 @@ void PetFeederComponent::dump_config() {
 }
 
 void PetFeederComponent::on_test_message(int target, int source, int command, int value) {
+
+  if(target == 42){
+    // reboot the device
+    ESP_LOGD(TAG, "Rebooting device as requested by test message");
+    ESP_LOGD(TAG, "Rebooting in 2 seconds...");
+    // Delay to allow log messages to flush
+    delay(2000);
+    ESP_LOGD(TAG, "Rebooting now...");
+    // Reboot the device
+    hal::delay(1000);  // Give some time for the log to flush
+    hal::restart();
+  }
+
   send_message_(target, source, command, {(char)value});
 }
 

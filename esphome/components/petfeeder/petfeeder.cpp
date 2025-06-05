@@ -118,9 +118,13 @@ void PetFeederComponent::save_schedules_() {
       (static_cast<uint32_t>(schedule.hour) << 16) | 
       (static_cast<uint32_t>(schedule.minute) << 8) | 
       static_cast<uint32_t>(schedule.portions);
-      auto pref = global_preferences->make_preference<uint32_t>(
-        this->get_hash_base() + i + 1, true);
+    
+    // Fix: Create the preference object with proper indentation and a unique key
+    uint32_t pref_key = this->get_hash_base() + 100 + i; // Use 100 offset to avoid collisions
+    auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
     pref.save(&schedule_data);
+    ESP_LOGD(TAG, "Saved schedule %d with key %u: %02d:%02d - %d portions", 
+             i, pref_key, schedule.hour, schedule.minute, schedule.portions);
   }
   
   ESP_LOGD(TAG, "Saved %d feeding schedules to flash", this->feeding_schedules_.size());
@@ -142,10 +146,12 @@ void PetFeederComponent::load_schedules_() {
     return;
   }
   
-  // Then load each schedule
+  ESP_LOGD(TAG, "Loading %d schedules from flash", count);
+  
+  // Load schedules with the improved key scheme
   for (size_t i = 0; i < count; i++) {
-      auto pref = global_preferences->make_preference<uint32_t>(
-        this->get_hash_base() + i + 1, true);
+    uint32_t pref_key = this->get_hash_base() + 100 + i;
+    auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
     uint32_t schedule_data = 0;
     
     if (pref.load(&schedule_data)) {
@@ -157,10 +163,14 @@ void PetFeederComponent::load_schedules_() {
       // Validate data
       if (schedule.hour < 24 && schedule.minute < 60 && schedule.portions > 0 && schedule.portions < 100) {
         this->feeding_schedules_.push_back(schedule);
+        ESP_LOGD(TAG, "  Loaded schedule %d with key %u: %02d:%02d - %d portions", 
+                i, pref_key, schedule.hour, schedule.minute, schedule.portions);
       } else {
         ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
       }
-    }  
+    } else {
+      ESP_LOGW(TAG, "Failed to load schedule %d with key %u", i, pref_key);
+    }
   }
   
   ESP_LOGD(TAG, "Loaded %d feeding schedules from flash", this->feeding_schedules_.size());

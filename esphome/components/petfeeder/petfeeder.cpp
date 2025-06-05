@@ -132,7 +132,7 @@ void PetFeederComponent::save_schedules_() {
       static_cast<uint32_t>(schedule.portions);
     
     // Use a different, much more spaced out key scheme for better isolation
-    uint32_t pref_key = this->get_hash_base() + 1000 + (i * 10);
+    uint32_t pref_key = this->get_hash_base() + 1 + i;
     auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
     
     if (!pref.save(&schedule_data)) {
@@ -179,7 +179,7 @@ void PetFeederComponent::load_schedules_() {
   // Load schedules with the new key scheme
   for (size_t i = 0; i < count; i++) {
     // Use the same key scheme as in save_schedules_
-    uint32_t pref_key = this->get_hash_base() + 1000 + (i * 10);
+    uint32_t pref_key = this->get_hash_base() + 1 + i;
     auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
     uint32_t schedule_data = 0;
     

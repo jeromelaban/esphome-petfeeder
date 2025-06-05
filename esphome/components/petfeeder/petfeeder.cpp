@@ -187,7 +187,7 @@ void PetFeederComponent::load_schedules_() {
     
     bool load_success = pref.load(&schedule_data);
     ESP_LOGD(TAG, "Loading schedule %d with key %u: %s", 
-             i, pref_key, load_success ? "success" : "failed");
+             i, hash, load_success ? "success" : "failed");
     
     if (load_success) {
       FeedingSchedule schedule;

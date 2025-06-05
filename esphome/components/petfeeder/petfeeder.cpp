@@ -36,6 +36,14 @@ void PetFeederComponent::setup() {
     // We use a unique hash based on the component type for storage
     uint32_t hash = fnv1_hash("petfeeder_schedule_count");
     this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
+    
+    // Initialize fixed preference slots - do this during setup to ensure consistent order
+    for (size_t i = 0; i < MAX_FEEDING_SCHEDULES; i++) {
+        uint32_t slot_hash = fnv1_hash("petfeeder_schedule_slot_" + std::to_string(i));
+        this->rtc_schedule_slots_[i] = global_preferences->make_preference<uint32_t>(slot_hash, true);
+        ESP_LOGD(TAG, "Created fixed schedule slot %d with hash %u", i, slot_hash);
+    }
+    
     this->load_schedules_();
 }
 
@@ -79,6 +87,12 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
     return;
   }
   
+  // Check if we've reached the maximum number of schedules
+  if (this->feeding_schedules_.size() >= MAX_FEEDING_SCHEDULES) {
+    ESP_LOGW(TAG, "Cannot add schedule: maximum number of schedules (%d) reached", MAX_FEEDING_SCHEDULES);
+    return;
+  }
+  
   // Create a new schedule
   FeedingSchedule schedule;
   schedule.hour = hour;
@@ -91,7 +105,8 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
   // Save to flash
   this->save_schedules_();
   
-  ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules", this->feeding_schedules_.size());
+  ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules (max: %d)", 
+           this->feeding_schedules_.size(), MAX_FEEDING_SCHEDULES);
 }
 
 void PetFeederComponent::on_clear_feeding_schedules() {
@@ -101,58 +116,44 @@ void PetFeederComponent::on_clear_feeding_schedules() {
 }
 
 void PetFeederComponent::save_schedules_() {
-  if (this->feeding_schedules_.empty()) {
-    // If no schedules, just save a 0
-    uint32_t count = 0;
-    this->rtc_schedules_.save(&count);
-    // Force preference system to commit changes
-    global_preferences->sync();
-    ESP_LOGD(TAG, "Saved 0 feeding schedules to flash");
-    return;
-  }
-  
-  // Clear any existing schedules by saving 0 first
-  uint32_t zero = 0;
-  this->rtc_schedules_.save(&zero);
-  delay(10); // Small delay to allow the write to complete
-  
-  // Save the count of schedules
-  uint32_t count = this->feeding_schedules_.size();
+  // Save the count of schedules (up to MAX_FEEDING_SCHEDULES)
+  uint32_t count = std::min(this->feeding_schedules_.size(), MAX_FEEDING_SCHEDULES);
   if (!this->rtc_schedules_.save(&count)) {
     ESP_LOGW(TAG, "Failed to save schedule count to flash");
     return;
   }
   
-  ESP_LOGD(TAG, "Saving %d feeding schedules to flash", count);
+  ESP_LOGD(TAG, "Saving %d feeding schedules to flash (max slots: %d)", count, MAX_FEEDING_SCHEDULES);
   
-  // Then save each schedule individually
-  for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
-    auto& schedule = this->feeding_schedules_[i];
-    uint32_t schedule_data = 
-      (static_cast<uint32_t>(schedule.hour) << 16) | 
-      (static_cast<uint32_t>(schedule.minute) << 8) | 
-      static_cast<uint32_t>(schedule.portions);
+  // Save schedules into the fixed slots
+  for (size_t i = 0; i < MAX_FEEDING_SCHEDULES; i++) {
+    uint32_t schedule_data = 0;
     
-    // Use a different, much more spaced out key scheme for better isolation
-    uint32_t hash = fnv1_hash("petfeeder_schedule_ " + std::to_string(i));
-    auto pref = global_preferences->make_preference<uint32_t>(hash, true);
+    // Only save actual schedule data if we have a schedule for this slot
+    if (i < this->feeding_schedules_.size()) {
+      auto& schedule = this->feeding_schedules_[i];
+      schedule_data = 
+        (static_cast<uint32_t>(schedule.hour) << 16) | 
+        (static_cast<uint32_t>(schedule.minute) << 8) | 
+        static_cast<uint32_t>(schedule.portions);
+        
+      ESP_LOGD(TAG, "Saving schedule %d: %02d:%02d - %d portions (data: %08X)", 
+               i, schedule.hour, schedule.minute, schedule.portions, schedule_data);
+    } else {
+      // For empty slots, save 0
+      ESP_LOGD(TAG, "Clearing unused schedule slot %d", i);
+    }
     
-    if (!pref.save(&schedule_data)) {
+    if (!this->rtc_schedule_slots_[i].save(&schedule_data)) {
       ESP_LOGW(TAG, "Failed to save schedule %d to flash", i);
       continue;
     }
-    
-    ESP_LOGD(TAG, "Saved schedule %d with key %u: %02d:%02d - %d portions", 
-             i, hash, schedule.hour, schedule.minute, schedule.portions);
-    
-    // Small delay between writes to ensure flash has time to settle
-    delay(10);
   }
   
   // Force preference system to commit all changes
   global_preferences->sync();
   
-  ESP_LOGD(TAG, "Saved %d feeding schedules to flash", this->feeding_schedules_.size());
+  ESP_LOGD(TAG, "Saved %d feeding schedules to flash", count);
 }
 
 void PetFeederComponent::load_schedules_() {
@@ -170,44 +171,45 @@ void PetFeederComponent::load_schedules_() {
     return;
   }
   
-  // Sanity check - don't load more than a reasonable number of schedules
-  if (count > 10) {
-    ESP_LOGW(TAG, "Invalid schedule count in flash: %u", count);
-    return;
+  // Sanity check - don't load more than the maximum number of schedules
+  if (count > MAX_FEEDING_SCHEDULES) {
+    ESP_LOGW(TAG, "Invalid schedule count in flash: %u, capping to %u", count, MAX_FEEDING_SCHEDULES);
+    count = MAX_FEEDING_SCHEDULES;
   }
   
-  ESP_LOGD(TAG, "Loading %d schedules from flash", count);
+  ESP_LOGD(TAG, "Loading %d schedules from fixed slots", count);
   
-  // Load schedules with the new key scheme
+  // Load schedules from fixed preference slots
   for (size_t i = 0; i < count; i++) {
-    // Use the same key scheme as in save_schedules_
-    uint32_t hash = fnv1_hash("petfeeder_schedule_ " + std::to_string(i));
-    auto pref = global_preferences->make_preference<uint32_t>(hash, true);
     uint32_t schedule_data = 0;
     
-    bool load_success = pref.load(&schedule_data);
-    ESP_LOGD(TAG, "Loading schedule %d with key %u: %s", 
-             i, hash, load_success ? "success" : "failed");
+    bool load_success = this->rtc_schedule_slots_[i].load(&schedule_data);
     
     if (load_success) {
+      // Skip slots that are empty (0)
+      if (schedule_data == 0) {
+        ESP_LOGD(TAG, "Slot %d is empty, skipping", i);
+        continue;
+      }
+      
       FeedingSchedule schedule;
       schedule.hour = (schedule_data >> 16) & 0xFF;
       schedule.minute = (schedule_data >> 8) & 0xFF;
       schedule.portions = schedule_data & 0xFF;
       
-      ESP_LOGD(TAG, "  Raw data: %08X, hour: %u, minute: %u, portions: %u",
-               schedule_data, schedule.hour, schedule.minute, schedule.portions);
+      ESP_LOGD(TAG, "Loaded from slot %d - Raw data: %08X, hour: %u, minute: %u, portions: %u",
+               i, schedule_data, schedule.hour, schedule.minute, schedule.portions);
       
       // Validate data
       if (schedule.hour < 24 && schedule.minute < 60 && schedule.portions > 0 && schedule.portions < 100) {
         this->feeding_schedules_.push_back(schedule);
-        ESP_LOGD(TAG, "  Added schedule %d: %02d:%02d - %d portions", 
+        ESP_LOGD(TAG, "Added schedule from slot %d: %02d:%02d - %d portions", 
                 i, schedule.hour, schedule.minute, schedule.portions);
       } else {
-        ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
+        ESP_LOGW(TAG, "Invalid schedule data in slot %d: %08X", i, schedule_data);
       }
     } else {
-      ESP_LOGW(TAG, "Failed to load schedule %d with key %u", i, hash);
+      ESP_LOGW(TAG, "Failed to load schedule from slot %d", i);
     }
   }
   

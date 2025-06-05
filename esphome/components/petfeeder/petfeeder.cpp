@@ -90,8 +90,6 @@ void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int porti
   this->save_schedules_();
   
   ESP_LOGD(TAG, "Feeding schedule added, now have %d schedules", this->feeding_schedules_.size());
-
-  this->load_schedules_();  // Reload to ensure we have the latest data
 }
 
 void PetFeederComponent::on_clear_feeding_schedules() {
@@ -105,13 +103,25 @@ void PetFeederComponent::save_schedules_() {
     // If no schedules, just save a 0
     uint32_t count = 0;
     this->rtc_schedules_.save(&count);
+    // Force preference system to commit changes
+    global_preferences->sync();
     ESP_LOGD(TAG, "Saved 0 feeding schedules to flash");
     return;
   }
   
-  // Save the count of schedules first
+  // Clear any existing schedules by saving 0 first
+  uint32_t zero = 0;
+  this->rtc_schedules_.save(&zero);
+  delay(10); // Small delay to allow the write to complete
+  
+  // Save the count of schedules
   uint32_t count = this->feeding_schedules_.size();
-  this->rtc_schedules_.save(&count);
+  if (!this->rtc_schedules_.save(&count)) {
+    ESP_LOGW(TAG, "Failed to save schedule count to flash");
+    return;
+  }
+  
+  ESP_LOGD(TAG, "Saving %d feeding schedules to flash", count);
   
   // Then save each schedule individually
   for (size_t i = 0; i < this->feeding_schedules_.size(); i++) {
@@ -121,13 +131,24 @@ void PetFeederComponent::save_schedules_() {
       (static_cast<uint32_t>(schedule.minute) << 8) | 
       static_cast<uint32_t>(schedule.portions);
     
-    // Fix: Create the preference object with proper indentation and a unique key
-    uint32_t pref_key = this->get_hash_base() + 100 + i; // Use 100 offset to avoid collisions
+    // Use a different, much more spaced out key scheme for better isolation
+    uint32_t pref_key = this->get_hash_base() + 1000 + (i * 10);
     auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
-    pref.save(&schedule_data);
+    
+    if (!pref.save(&schedule_data)) {
+      ESP_LOGW(TAG, "Failed to save schedule %d to flash", i);
+      continue;
+    }
+    
     ESP_LOGD(TAG, "Saved schedule %d with key %u: %02d:%02d - %d portions", 
              i, pref_key, schedule.hour, schedule.minute, schedule.portions);
+    
+    // Small delay between writes to ensure flash has time to settle
+    delay(10);
   }
+  
+  // Force preference system to commit all changes
+  global_preferences->sync();
   
   ESP_LOGD(TAG, "Saved %d feeding schedules to flash", this->feeding_schedules_.size());
 }
@@ -137,8 +158,13 @@ void PetFeederComponent::load_schedules_() {
   
   // First load the count
   uint32_t count = 0;
-  if (!this->rtc_schedules_.load(&count) || count == 0) {
-    ESP_LOGD(TAG, "No feeding schedules found in flash");
+  if (!this->rtc_schedules_.load(&count)) {
+    ESP_LOGD(TAG, "Failed to load schedule count from flash");
+    return;
+  }
+  
+  if (count == 0) {
+    ESP_LOGD(TAG, "No feeding schedules found in flash (count = 0)");
     return;
   }
   
@@ -150,23 +176,31 @@ void PetFeederComponent::load_schedules_() {
   
   ESP_LOGD(TAG, "Loading %d schedules from flash", count);
   
-  // Load schedules with the improved key scheme
+  // Load schedules with the new key scheme
   for (size_t i = 0; i < count; i++) {
-    uint32_t pref_key = this->get_hash_base() + 100 + i;
+    // Use the same key scheme as in save_schedules_
+    uint32_t pref_key = this->get_hash_base() + 1000 + (i * 10);
     auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
     uint32_t schedule_data = 0;
     
-    if (pref.load(&schedule_data)) {
+    bool load_success = pref.load(&schedule_data);
+    ESP_LOGD(TAG, "Loading schedule %d with key %u: %s", 
+             i, pref_key, load_success ? "success" : "failed");
+    
+    if (load_success) {
       FeedingSchedule schedule;
       schedule.hour = (schedule_data >> 16) & 0xFF;
       schedule.minute = (schedule_data >> 8) & 0xFF;
       schedule.portions = schedule_data & 0xFF;
       
+      ESP_LOGD(TAG, "  Raw data: %08X, hour: %u, minute: %u, portions: %u",
+               schedule_data, schedule.hour, schedule.minute, schedule.portions);
+      
       // Validate data
       if (schedule.hour < 24 && schedule.minute < 60 && schedule.portions > 0 && schedule.portions < 100) {
         this->feeding_schedules_.push_back(schedule);
-        ESP_LOGD(TAG, "  Loaded schedule %d with key %u: %02d:%02d - %d portions", 
-                i, pref_key, schedule.hour, schedule.minute, schedule.portions);
+        ESP_LOGD(TAG, "  Added schedule %d: %02d:%02d - %d portions", 
+                i, schedule.hour, schedule.minute, schedule.portions);
       } else {
         ESP_LOGW(TAG, "Invalid schedule data in flash: %08X", schedule_data);
       }

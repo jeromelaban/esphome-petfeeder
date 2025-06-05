@@ -34,8 +34,8 @@ void PetFeederComponent::setup() {
 
     // Initialize RTC object
     // We use a unique hash based on the component type for storage
-    uint32_t hash_base = this->get_hash_base();
-    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash_base, true);
+    uint32_t hash = fnv1_hash("petfeeder_schedule_count");
+    this->rtc_schedules_ = global_preferences->make_preference<uint32_t>(hash, true);
     this->load_schedules_();
 }
 
@@ -134,8 +134,8 @@ void PetFeederComponent::save_schedules_() {
       static_cast<uint32_t>(schedule.portions);
     
     // Use a different, much more spaced out key scheme for better isolation
-    uint32_t pref_key = this->get_hash_base() + 1 + i;
-    auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
+    uint32_t hash = fnv1_hash("petfeeder_schedule_ " + std::to_string(i));
+    auto pref = global_preferences->make_preference<uint32_t>(hash, true);
     
     if (!pref.save(&schedule_data)) {
       ESP_LOGW(TAG, "Failed to save schedule %d to flash", i);
@@ -181,8 +181,8 @@ void PetFeederComponent::load_schedules_() {
   // Load schedules with the new key scheme
   for (size_t i = 0; i < count; i++) {
     // Use the same key scheme as in save_schedules_
-    uint32_t pref_key = this->get_hash_base() + 1 + i;
-    auto pref = global_preferences->make_preference<uint32_t>(pref_key, true);
+    uint32_t hash = fnv1_hash("petfeeder_schedule_ " + std::to_string(i));
+    auto pref = global_preferences->make_preference<uint32_t>(hash, true);
     uint32_t schedule_data = 0;
     
     bool load_success = pref.load(&schedule_data);

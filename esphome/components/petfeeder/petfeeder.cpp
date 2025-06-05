@@ -338,9 +338,9 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             this->last_counter_update_ = now;
             this->counter_component_->increment(portions);
           } else {
-            ESP_LOGD(TAG, "Soft reset");
-            
-            send_message_(0x07, 0x03, 0x0F, {});
+            ESP_LOGD(TAG, "Ask stop retry");
+
+            send_message_(0x07, 0x03, 0x02, {});
           }
         }
       }

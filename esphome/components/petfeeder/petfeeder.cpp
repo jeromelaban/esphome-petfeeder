@@ -330,14 +330,6 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
         auto portions = data[7];
         ESP_LOGD(TAG, "MCU Ack %d portions", portions);
 
-        // Framed ACK that mirrors the spec
-        send_message_(               // helper you already have
-            0x07,                    // target  = MCU
-            0x03,                    // source  = NodeMCU
-            0x01,                    // command = “ACK of response”
-            { 0x66 }                 // payload  = opcode we’re acknowledging
-        );
-
         if (this->counter_component_ != nullptr) {
           // Check if at least 1 second has passed since the last update
           uint32_t now = millis();
@@ -346,7 +338,9 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             this->last_counter_update_ = now;
             this->counter_component_->increment(portions);
           } else {
-            ESP_LOGD(TAG, "Ignoring duplicate MCU message (less than 1 second since last update)");
+            ESP_LOGD(TAG, "Soft reset");
+            
+            send_message_(0x07, 0x03, 0x0F, {});
           }
         }
       }

@@ -329,8 +329,17 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
       if (command == 0x00) {
         auto portions = data[7];
         ESP_LOGD(TAG, "MCU Ack %d portions", portions);
+        
         if (this->counter_component_ != nullptr) {
-          this->counter_component_->increment(portions);
+          // Check if at least 1 second has passed since the last update
+          uint32_t now = millis();
+          if (this->last_counter_update_ == 0 || now - this->last_counter_update_ >= 1000) {
+            ESP_LOGD(TAG, "Incrementing counter with %d portions", portions);
+            this->last_counter_update_ = now;
+            this->counter_component_->increment(portions);
+          } else {
+            ESP_LOGD(TAG, "Ignoring duplicate MCU message (less than 1 second since last update)");
+          }
         }
       }
     }
@@ -428,7 +437,7 @@ void PetFeederPortionsCounterComponent::increment(int count) {
 }
 
 optional<int> PetFeederPortionsCounterComponent::get_initial_state_() {
-  this->rtc_ = global_preferences->make_preference<int>(this->get_object_id_hash(), true);
+  this->rtc_ = global_preferences->make_preference<int>(this->get_object_id_hash(), false);
   int saved_portion_count;
   if (!this->rtc_.load(&saved_portion_count))
     return {};

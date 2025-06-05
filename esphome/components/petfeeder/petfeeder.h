@@ -48,11 +48,11 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   void on_test_message(int target, int source, int command, int value);
   void on_add_feeding_schedule(int hour, int minute, int portions);
   void on_clear_feeding_schedules();
- protected:
-  PetFeederPortionsCounterComponent *counter_component_{nullptr};
+ protected:  PetFeederPortionsCounterComponent *counter_component_{nullptr};
   time::RealTimeClock *time_{nullptr};
   bool last_connected_{false};
   uint32_t last_update_{0};  uint32_t last_schedule_check_{0};
+  uint32_t last_counter_update_{0};
   std::vector<char> incoming_message_{};  std::vector<FeedingSchedule> feeding_schedules_{};
   ESPPreferenceObject flash_schedules_count_; // Stores count of schedules
   ESPPreferenceObject rtc_schedule_slots_[MAX_FEEDING_SCHEDULES]; // Fixed slots for schedules

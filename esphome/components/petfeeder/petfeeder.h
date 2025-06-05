@@ -5,12 +5,26 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/log.h"
+#include "esphome/components/time/real_time_clock.h"
 #include <numeric>
+#include <vector>
+#include <map>
+#include <string>
+#include <time.h>
 #include "esphome/core/application.h"
 #include "esphome/components/api/custom_api_device.h"
 
 namespace esphome {
 namespace petfeeder {
+
+// Define the maximum number of schedule slots
+const size_t MAX_FEEDING_SCHEDULES = 6;
+
+struct FeedingSchedule {
+  uint8_t hour;
+  uint8_t minute;
+  uint8_t portions;
+};
 
 // Forward declaration
 class PetFeederPortionsCounterComponent;
@@ -23,24 +37,35 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
   
-  void set_counter_component(PetFeederPortionsCounterComponent *counter) { this->counter_component_ = counter; }
+  // Generate a stable hash for preferences storage
+  uint32_t get_hash_base() const {
+    return 0x17dec01e; // "pet feeder" magic number
+  }
   
-  void on_pet_feed(int portions);
+  void set_counter_component(PetFeederPortionsCounterComponent *counter) { this->counter_component_ = counter; }
+  void set_time(time::RealTimeClock *time) { this->time_ = time; }
+    void on_pet_feed(int portions);
   void on_test_message(int target, int source, int command, int value);
-
+  void on_add_feeding_schedule(int hour, int minute, int portions);
+  void on_clear_feeding_schedules();
  protected:
   PetFeederPortionsCounterComponent *counter_component_{nullptr};
+  time::RealTimeClock *time_{nullptr};
   bool last_connected_{false};
-  uint32_t last_update_{0};
-  std::vector<char> incoming_message_{};
-
+  uint32_t last_update_{0};  uint32_t last_schedule_check_{0};
+  std::vector<char> incoming_message_{};  std::vector<FeedingSchedule> feeding_schedules_{};
+  ESPPreferenceObject flash_schedules_count_; // Stores count of schedules
+  ESPPreferenceObject rtc_schedule_slots_[MAX_FEEDING_SCHEDULES]; // Fixed slots for schedules
   void process_serial_();
   void process_frame_(char targetAddress, char sourceAddress, char command, std::vector<char> data);
   void check_network_();
+  void check_feeding_schedules_();
   void send_message_(char targetAddress, char sourceAddress, char command, std::vector<char> data);
   std::vector<char> build_message_(char targetAddress, char sourceAddress, char command, std::vector<char> data);
   
   bool network_is_connected_();
+  void save_schedules_();
+  void load_schedules_();
 };
 
 class PetFeederPortionsCounterComponent : public sensor::Sensor, public Component {

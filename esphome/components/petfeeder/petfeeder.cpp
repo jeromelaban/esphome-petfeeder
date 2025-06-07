@@ -332,7 +332,9 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
         ESP_LOGD(TAGSERIAL, "MCU Ack %d portions", portions);
 
         if (this->counter_component_ != nullptr) {
-          // Check if at least 1 second has passed since the last update
+          // Check if at least 1 second has passed since the last update.
+          // This type of fast messaging may happen if the power outlet is not
+          // stable enough and may cause the MCU to malfunction.
           uint32_t now = millis();
           if (this->last_counter_update_ == 0 || now - this->last_counter_update_ >= 1000) {
             ESP_LOGD(TAG, "Incrementing counter with %d portions", portions);
@@ -341,13 +343,6 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
           } else {
             ESP_LOGD(TAGSERIAL, "Skipping counter increment");
           }
-
-          // Write a single 0x06 byte to acknowledge the command
-          std::vector<uint8_t> ack_buffer = {0x06};
-          write_array(ack_buffer);
-
-          std::vector<uint8_t> ack_buffer2 = {0x55, 0xAA, 0x07, 0x03, 0x00, 0x01, 0x04, 0x7E};
-          write_array(ack_buffer2);
         }
       }
     }

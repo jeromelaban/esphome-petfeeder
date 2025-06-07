@@ -345,8 +345,8 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             std::vector<uint8_t> ack_buffer = {0x06};
             write_array(ack_buffer);
 
-            std::vector<uint8_t> ack_buffer = {0x55, 0xAA, 0x07, 0x03, 0x00, 0x01, 0x04, 0x7E};
-            write_array(ack_buffer);
+            std::vector<uint8_t> ack_buffer2 = {0x55, 0xAA, 0x07, 0x03, 0x00, 0x01, 0x04, 0x7E};
+            write_array(ack_buffer2);
           }
         }
       }

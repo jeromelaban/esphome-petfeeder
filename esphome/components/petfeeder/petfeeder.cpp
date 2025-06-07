@@ -340,6 +340,8 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
             this->counter_component_->increment(portions);
           } else {
             ESP_LOGD(TAGSERIAL, "Skipping counter increment");
+            
+            send_message_(0x07, 0x03, 0x00, { 0x66, 0x05, 0x00, 0x01, 0x04 });
           }
         }
       }

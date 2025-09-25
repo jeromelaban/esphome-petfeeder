@@ -1,7 +1,9 @@
 #include "petfeeder.h"
-#include "esphome/core/log.h"
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/helpers.h"
+#include "esphome/core/log.h"
+#include <algorithm>
 
 #ifdef USE_WIFI
 #include "esphome/components/wifi/wifi_component.h"
@@ -13,27 +15,31 @@ namespace petfeeder {
 static const char *const TAG = "petfeeder";
 
 void PetFeederComponent::setup() {
-   register_service(
+#ifdef USE_API_CUSTOM_SERVICES
+  register_service(
       &PetFeederComponent::on_pet_feed,
       "feed_pet",
       {"portions"});
-    
-    register_service(
+
+  register_service(
       &PetFeederComponent::on_test_message,
       "test_message",
-      {"target", "source", "command", "value"});    // Register services with proper method pointers
+      {"target", "source", "command", "value"});
 
-    register_service(
+  register_service(
       &PetFeederComponent::on_add_feeding_schedule,
       "add_feeding_schedule",
       {"hour", "minute", "portions"});
 
-      register_service(
+  register_service(
       &PetFeederComponent::on_clear_feeding_schedules,
-      "clear_feeding_schedules"); 
+      "clear_feeding_schedules");
+#else
+  ESP_LOGW(TAG, "API custom services disabled; petfeeder services not registered");
+#endif
 
-    uint32_t hash = fnv1_hash("petfeeder_schedule_count");
-    this->flash_schedules_count_ = global_preferences->make_preference<uint32_t>(hash, true);
+  uint32_t hash = fnv1_hash("petfeeder_schedule_count");
+  this->flash_schedules_count_ = global_preferences->make_preference<uint32_t>(hash, true);
     
     // Initialize fixed preference slots - do this during setup to ensure consistent order
     // ESP8266 does not support dynamic preference re-creation, and the order of creation matters
@@ -261,12 +267,16 @@ void PetFeederComponent::check_feeding_schedules_() {
     if (current_time.hour == schedule.hour && current_time.minute == schedule.minute) {
             ESP_LOGD(TAG, "It's feeding time! Schedule %02d:%02d - %d portions", 
                schedule.hour, schedule.minute, schedule.portions);
-        // Fire an event to Home Assistant
+#ifdef USE_API_HOMEASSISTANT_SERVICES
+      // Fire an event to Home Assistant
       std::map<std::string, std::string> data;
       data["hour"] = std::to_string(schedule.hour);
       data["minute"] = std::to_string(schedule.minute);
       data["portions"] = std::to_string(schedule.portions);
       fire_homeassistant_event("esphome.petfeeder_auto_feeding", data);
+#else
+      ESP_LOGW(TAG, "Home Assistant services disabled; skipping petfeeder_auto_feeding event");
+#endif
       
       // Feed the pet
       this->on_pet_feed(schedule.portions);

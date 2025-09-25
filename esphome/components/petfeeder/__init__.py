@@ -13,7 +13,7 @@ CONF_PORTIONS_COUNTER = "portions_counter"
 CONF_TIME_ID = "time_id"
 
 DEPENDENCIES = ["uart", "api"]
-AUTO_LOAD = ["time"]
+AUTO_LOAD = ["time", "sensor"]
 CODEOWNERS = ["jeromelaban"]
 MULTI_CONF = True
 

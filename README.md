@@ -31,6 +31,8 @@ external_components:
 ```yaml
 # Required components
 api:
+  custom_services: true        # Required for petfeeder.* services
+  homeassistant_services: true  # Required for Home Assistant events
 
 uart:
   rx_pin: GPIO16
@@ -47,6 +49,9 @@ petfeeder:
     name: "Pet Feeder Portions Counter"
   time_id: homeassistant_time  # Optional: required only if using scheduled feedings
 ```
+
+> [!NOTE]
+> The component compiles without the `custom_services` and `homeassistant_services` flags, but the corresponding services and events are disabled in that case.
 
 ### Offline Operation
 
@@ -163,3 +168,15 @@ automation:
           title: "Pet Feeder Activated"
           message: "Pet was automatically fed {{ trigger.event.data.portions }} portions at {{ trigger.event.data.hour }}:{{ trigger.event.data.minute }}"
 ```
+
+## Standalone Testing
+
+You can compile this component inside Docker without touching an existing ESPHome setup. The repository includes `examples/petfeeder_test.yaml`, which mirrors the configuration shown above and enables the required API service flags.
+
+1. Install Docker and ensure the daemon is running.
+2. From the repository root, execute:
+   ```bash
+   docker run --rm -v "$PWD":/config -w /config ghcr.io/esphome/esphome compile examples/petfeeder_test.yaml
+   ```
+
+The build artifacts are written to `.esphome/` under the repository. Adjust the example YAML as needed to exercise additional scenarios.

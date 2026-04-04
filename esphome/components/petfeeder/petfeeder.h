@@ -13,6 +13,7 @@
 #include <time.h>
 #include "esphome/core/application.h"
 #include "esphome/components/api/custom_api_device.h"
+#include <cstdint>
 
 namespace esphome {
 namespace petfeeder {
@@ -44,9 +45,9 @@ class PetFeederComponent : public Component, public uart::UARTDevice, public api
   
   void set_counter_component(PetFeederPortionsCounterComponent *counter) { this->counter_component_ = counter; }
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-    void on_pet_feed(int portions);
-  void on_test_message(int target, int source, int command, int value);
-  void on_add_feeding_schedule(int hour, int minute, int portions);
+    void on_pet_feed(int32_t portions);
+  void on_test_message(int32_t target, int32_t source, int32_t command, int32_t value);
+  void on_add_feeding_schedule(int32_t hour, int32_t minute, int32_t portions);
   void on_clear_feeding_schedules();
  protected:
   PetFeederPortionsCounterComponent *counter_component_{nullptr};

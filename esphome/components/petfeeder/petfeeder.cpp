@@ -65,7 +65,7 @@ void PetFeederComponent::dump_config() {
   this->load_schedules_();  // Load schedules to ensure they are up-to-date in the log
 }
 
-void PetFeederComponent::on_test_message(int target, int source, int command, int value) {
+void PetFeederComponent::on_test_message(int32_t target, int32_t source, int32_t command, int32_t value) {
 
   if(target == 42){
     ESP_LOGI(TAG, "Restarting device");
@@ -76,14 +76,14 @@ void PetFeederComponent::on_test_message(int target, int source, int command, in
   send_message_(target, source, command, {(char)value});
 }
 
-void PetFeederComponent::on_pet_feed(int portions) {
+void PetFeederComponent::on_pet_feed(int32_t portions) {
   ESP_LOGD(TAG, "Feeding %d portions", portions);
   
   // Spin the motor for portions
   send_message_(0x00, 0x06, 0x00, {0x65, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, (char)portions});
 }
 
-void PetFeederComponent::on_add_feeding_schedule(int hour, int minute, int portions) {
+void PetFeederComponent::on_add_feeding_schedule(int32_t hour, int32_t minute, int32_t portions) {
   ESP_LOGD(TAG, "Adding feeding schedule: %02d:%02d - %d portions", hour, minute, portions);
   
   // Validate input

@@ -1,6 +1,6 @@
 # Pet Feeder External Component for ESPHome
 
-This is an ESPHome external component for controlling an ESP8266-based Wifi pet feeder device via UART to an internal MCU.
+This is an ESPHome external component for controlling a Wi-Fi pet feeder device via UART to an internal MCU. It originally targeted an ESP8266 retrofit and can also be used with an ESP32-C3 replacement module.
 
 > [!IMPORTANT]
 > Using this component does require physical modifications to your device that will void your warranty. Those modifications are not detailed in this repo.
@@ -28,6 +28,8 @@ external_components:
 
 ## Configuration
 
+The example below shows the original ESP8266-style UART setup:
+
 ```yaml
 # Required components
 api:
@@ -49,6 +51,21 @@ petfeeder:
     name: "Pet Feeder Portions Counter"
   time_id: homeassistant_time  # Optional: required only if using scheduled feedings
 ```
+
+### ESP32-C3 UART Configuration
+
+If you replaced the original controller with an ESP32-C3 device, use this UART configuration:
+
+```yaml
+uart:
+  id: uart_bus
+  baud_rate: 9600
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  rx_buffer_size: 512
+```
+
+The component works with the ESP32-C3, but the UART pins and buffer size should match the configuration above.
 
 > [!NOTE]
 > The component compiles without the `custom_services` and `homeassistant_services` flags, but the corresponding services and events are disabled in that case.

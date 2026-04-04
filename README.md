@@ -197,3 +197,21 @@ You can compile this component inside Docker without touching an existing ESPHom
    ```
 
 The build artifacts are written to `.esphome/` under the repository. Adjust the example YAML as needed to exercise additional scenarios.
+
+## Debugging
+
+### Debugging UART Traffic
+
+To debug UART traffic, use ESPHome's built-in UART debug support:
+
+```yaml
+uart:
+  baud_rate: 9600
+  debug:
+    direction: BOTH
+    dummy_receiver: true
+    after:
+      timeout: 50ms
+```
+
+Add the rest of your device-specific UART settings such as `id`, pins, and `rx_buffer_size` alongside this debug block.

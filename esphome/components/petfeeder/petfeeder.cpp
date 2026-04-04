@@ -287,13 +287,10 @@ void PetFeederComponent::check_feeding_schedules_() {
 void PetFeederComponent::process_serial_() {
   while (available()) {
     char d = read();
-    ESP_LOGD(TAG, "read %02X", d);
 
     if (this->incoming_message_.size() == 0) {
       if (d == 0x55) {
         this->incoming_message_.push_back(d);
-      } else {
-        ESP_LOGD(TAG, "Ignoring invalid data (%02X)", d);
       }
     } else {
       this->incoming_message_.push_back(d);
@@ -317,7 +314,7 @@ void PetFeederComponent::process_serial_() {
               ESP_LOGD(TAG, "Got MCU frame target:%02X source:%02X command:%02X length:%02X", target, source, command, length);
               process_frame_(target, source, command, std::vector<char>(this->incoming_message_.begin()+6, this->incoming_message_.end() - 1));
             } else {
-              ESP_LOGD(TAG, "Invalid MCU frame checksum (Expected %02X, got %02X)", checksum, this->incoming_message_.back());
+              ESP_LOGD(TAG, "Invalid MCU frame checksum (expected %02X, got %02X)", checksum, this->incoming_message_.back());
             }
 
             this->incoming_message_.clear();
@@ -325,7 +322,7 @@ void PetFeederComponent::process_serial_() {
             // Incomplete frame, continuing
           }
         } else {
-          ESP_LOGD(TAG, "Invalid MCU frame, clearing");
+          ESP_LOGD(TAG, "Invalid MCU frame, clearing buffer");
           this->incoming_message_.clear();
         }
       }
@@ -338,7 +335,7 @@ void PetFeederComponent::process_frame_(char targetAddress, char sourceAddress, 
     if (sourceAddress == 0x07) {
       if (command == 0x00) {
         auto portions = data[7];
-        ESP_LOGD(TAG, "MCU Ack %d portions", portions);
+        ESP_LOGD(TAG, "MCU acked %d portions", portions);
         if (this->counter_component_ != nullptr) {
           this->counter_component_->increment(portions);
         }
